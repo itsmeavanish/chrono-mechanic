@@ -187,29 +187,13 @@ const parts: Part[] = [
   },
 ];
 
-const breakdowns = [
-  {
-    date: "20 Jun 2026",
-    duration: "3h 20m",
-    issue: "Heater Zone-3 open circuit",
-    rootCause: "Element burnout (life expired)",
-    action: "Bypassed zone, scheduled replacement band ETA 28 Jun",
-  },
-  {
-    date: "22 Feb 2026",
-    duration: "5h 10m",
-    issue: "Blow pin seal failure",
-    rootCause: "Worn O-ring under high-pressure cycle",
-    action: "Replaced seal kit, re-torqued housing, updated PM interval to 90 days",
-  },
-  {
-    date: "08 Jan 2026",
-    duration: "2h 45m",
-    issue: "Motor overheat trip",
-    rootCause: "Obstructed cooling intake",
-    action: "Cleared debris, replaced thermal sensor, added monthly intake check",
-  },
-];
+const breakdowns: Array<{
+  date: string;
+  duration: string;
+  issue: string;
+  rootCause: string;
+  action: string;
+}> = [];
 
 /* ---------------- GRAPH DATA: Motor & Blower × DE / NDE ---------------- */
 
@@ -270,51 +254,32 @@ function levelOf(v: number): "ok" | "warning" | "critical" {
 
 const reports = [
   {
-    date: "14 Jun 2026",
-    technician: "R. Mehta",
-    task: "Quarterly PM — Drive train",
+    date: "22 May 2026",
+    technician: "Pending Assessment",
+    task: "Complete Overhaul & Part Replacement",
     notes:
-      "Bearing grease top-up, alignment within tolerance (0.04 mm). Recommend re-check coupling at next PM.",
-    rootCause: "Routine preventive — no fault",
+      "Spare parts replaced: Shaft, Impeller, Bearings, Blower Pulley, Motor pulley, Belt, and Vibration isolators.",
+    rootCause: "Pending assessment update — kept editable for upcoming details.",
     before: beforeImg,
     after: afterImg,
   },
   {
-    date: "10 Jun 2026",
-    technician: "S. Iyer",
-    task: "Blow timing re-calibration",
+    date: "20 Sep 2015",
+    technician: "Historical Record",
+    task: "Blower & Motor Assembly Overhaul",
     notes:
-      "Adjusted blow delay from 0.42s to 0.38s after observing flash on parison. Output stable across 50 cycles.",
-    rootCause: "Drift in solenoid response time",
+      "Spare parts replaced: Blower Fan Pulley, Motor Pulley, Belt, and Blower Motor.",
+    rootCause: "Wear and tear over operational period",
     before: beforeImg,
     after: afterImg,
   },
   {
-    date: "02 May 2026",
-    technician: "A. Khan",
-    task: "Hydraulic oil filter change",
-    notes: "Filter ΔP at 1.8 bar — replaced. Oil sample sent for analysis, results pending.",
-    rootCause: "Scheduled consumable replacement",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "22 Feb 2026",
-    technician: "R. Mehta",
-    task: "Blow pin seal replacement",
+    date: "29 Aug 2014",
+    technician: "Historical Record",
+    task: "Cooling & Air Handling Unit Overhaul",
     notes:
-      "Full seal kit replaced after blow-out. Housing bolts re-torqued to 45 Nm. Test cycle: 20 shots OK.",
-    rootCause: "Worn O-ring — exceeded service life",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "08 Jan 2026",
-    technician: "S. Iyer",
-    task: "Motor cooling restoration",
-    notes:
-      "Cleared debris from intake louvres, replaced PT100 thermal sensor. Temp stable at 62 °C under load.",
-    rootCause: "Obstructed cooling intake",
+      "Spare parts replaced: 4x Cooling coil, 1x Rollamatic filter assembly, Air washer unit, 3x Doors, 7x Coil valves, Both Bearings, and Rotor assembly.",
+    rootCause: "Major scheduled maintenance cycle",
     before: beforeImg,
     after: afterImg,
   },
@@ -517,27 +482,37 @@ function SectionOverview() {
       <div className="grid lg:grid-cols-2 gap-5 sm:gap-6">
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
           <h4 className="font-semibold mb-4">Breakdown History</h4>
-          <ol className="relative border-l border-border ml-1.5 space-y-5">
-            {breakdowns.map((b) => (
-              <li key={b.date} className="pl-5">
-                <span className="absolute -left-1.5 mt-1.5 size-3 rounded-full bg-primary ring-4 ring-background" />
-                <div className="text-sm font-medium">{b.issue}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {b.date} · downtime {b.duration}
-                </div>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-md bg-muted px-3 py-2">
-                    <div className="text-muted-foreground">Root cause</div>
-                    <div className="text-foreground mt-0.5">{b.rootCause}</div>
+          {breakdowns.length > 0 ? (
+            <ol className="relative border-l border-border ml-1.5 space-y-5">
+              {breakdowns.map((b) => (
+                <li key={b.date} className="pl-5">
+                  <span className="absolute -left-1.5 mt-1.5 size-3 rounded-full bg-primary ring-4 ring-background" />
+                  <div className="text-sm font-medium">{b.issue}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {b.date} · downtime {b.duration}
                   </div>
-                  <div className="rounded-md bg-muted px-3 py-2">
-                    <div className="text-muted-foreground">Action taken</div>
-                    <div className="text-foreground mt-0.5">{b.action}</div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md bg-muted px-3 py-2">
+                      <div className="text-muted-foreground">Root cause</div>
+                      <div className="text-foreground mt-0.5">{b.rootCause}</div>
+                    </div>
+                    <div className="rounded-md bg-muted px-3 py-2">
+                      <div className="text-muted-foreground">Action taken</div>
+                      <div className="text-foreground mt-0.5">{b.action}</div>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ol>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-muted/30 rounded-xl border border-dashed border-border/60">
+              <CheckCircle2 className="size-8 text-success/80 mb-3" />
+              <div className="text-sm font-medium">No Recent Breakdowns</div>
+              <div className="text-xs text-muted-foreground mt-1.5 max-w-[200px] leading-relaxed">
+                Machine has been running smoothly without unexpected downtime.
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
@@ -800,8 +775,8 @@ function SectionReports() {
     <section id="reports" className="space-y-5 sm:space-y-6">
       <SectionHeader
         eyebrow="Section 03"
-        title="Last 5 Maintenance Reports"
-        subtitle="Technician notes, before/after photos and root cause."
+        title="Overhauling History"
+        subtitle="Major component replacements, visual evidence, and root causes."
       />
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-5 sm:gap-6">

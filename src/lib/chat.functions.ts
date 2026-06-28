@@ -50,17 +50,27 @@ const Input = z.object({
 export const askMachine = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const lovableKey = process.env.LOVABLE_API_KEY;
+    
+    let url = "";
+    let headers: Record<string, string> = { "Content-Type": "application/json" };
+    
+    if (geminiKey) {
+      url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+      headers["Authorization"] = `Bearer ${geminiKey}`;
+    } else if (lovableKey) {
+      url = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      headers["Lovable-API-Key"] = lovableKey;
+    } else {
+      throw new Error("Missing GEMINI_API_KEY (or LOVABLE_API_KEY)");
+    }
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
-      },
+      headers,
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: geminiKey ? "gemini-1.5-flash" : "google/gemini-3-flash-preview",
         messages: [{ role: "system", content: MACHINE_CONTEXT }, ...data.messages],
       }),
     });
