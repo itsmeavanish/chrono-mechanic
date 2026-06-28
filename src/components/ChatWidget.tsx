@@ -45,7 +45,11 @@ export function ChatWidget() {
     setLoading(true);
     try {
       const { text: answer } = await ask({
-        data: { messages: next.map((m) => ({ role: m.role, content: m.content })) },
+        data: {
+          messages: next
+            .filter((m, i) => !(i === 0 && m.role === "assistant"))
+            .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+        },
       });
       setMessages([...next, { role: "assistant", content: answer }]);
     } catch (e) {

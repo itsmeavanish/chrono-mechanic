@@ -299,6 +299,26 @@ const reports = [
     before: beforeImg,
     after: afterImg,
   },
+  {
+    date: "13 Jan 2012",
+    technician: "Historical Record",
+    task: "Impeller & Pulley Maintenance",
+    notes:
+      "Spare parts replaced/serviced: Impeller Balancing, Blower Pulley changed, Motor Pulley changed, Structure & casing painting.",
+    rootCause: "Scheduled preventive maintenance & wear",
+    before: beforeImg,
+    after: afterImg,
+  },
+  {
+    date: "20 Feb 2007",
+    technician: "Historical Record",
+    task: "Rotor & Drive Assembly Replacement",
+    notes:
+      "Spare parts replaced/serviced: Motor Pulley replaced, Blower pulley replaced, Shaft with rotor replaced, Both bearings replaced, Belt laser alignment done.",
+    rootCause: "Extensive wear causing drive instability",
+    before: beforeImg,
+    after: afterImg,
+  },
 ];
 
 /* ============================================================ */

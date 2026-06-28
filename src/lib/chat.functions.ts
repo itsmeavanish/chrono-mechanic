@@ -53,39 +53,61 @@ export const askMachine = createServerFn({ method: "POST" })
     const geminiKey = process.env.GEMINI_API_KEY;
     const lovableKey = process.env.LOVABLE_API_KEY;
     
-    let url = "";
-    let headers: Record<string, string> = { "Content-Type": "application/json" };
-    
     if (geminiKey) {
-      url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-      headers["Authorization"] = `Bearer ${geminiKey}`;
-    } else if (lovableKey) {
-      url = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      headers["Lovable-API-Key"] = lovableKey;
-    } else {
-      throw new Error("Missing GEMINI_API_KEY (or LOVABLE_API_KEY)");
+      // Native Gemini REST API
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const contents = data.messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: { text: MACHINE_CONTEXT } },
+          contents,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      const json = (await res.json()) as any;
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "(no response)";
+      return { text };
+    } 
+    
+    if (lovableKey) {
+      // Lovable OpenAI-compatible Gateway
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Lovable-API-Key": lovableKey,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [{ role: "system", content: MACHINE_CONTEXT }, ...data.messages],
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        if (res.status === 429) throw new Error("Rate limit — please try again in a moment.");
+        if (res.status === 402)
+          throw new Error("AI credits exhausted. Add credits in Lovable settings.");
+        throw new Error(`Lovable AI error ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const text = json.choices?.[0]?.message?.content?.trim() ?? "(no response)";
+      return { text };
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: geminiKey ? "gemini-1.5-flash" : "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: MACHINE_CONTEXT }, ...data.messages],
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 429) throw new Error("Rate limit — please try again in a moment.");
-      if (res.status === 402)
-        throw new Error("AI credits exhausted. Add credits in Lovable settings.");
-      throw new Error(`AI error ${res.status}: ${body.slice(0, 200)}`);
-    }
-
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = json.choices?.[0]?.message?.content?.trim() ?? "(no response)";
-    return { text };
+    throw new Error("Missing GEMINI_API_KEY or LOVABLE_API_KEY");
   });
