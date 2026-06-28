@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Cog,
+  Droplets,
   Factory,
   FileText,
   Gauge,
@@ -14,44 +15,48 @@ import {
   MapPin,
   Settings,
   ShieldCheck,
+  Thermometer,
   User,
+  Waves,
   Wrench,
   Zap,
 } from "lucide-react";
 import machineImg from "@/assets/machine.jpg";
 import beforeImg from "@/assets/before.jpg";
 import afterImg from "@/assets/after.jpg";
+import { ChatWidget } from "@/components/ChatWidget";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Machine 360 — BM-04 Blow Molding Unit" },
+      { title: "AHU-Quench SH1 · Machine 360" },
       {
         name: "description",
         content:
-          "Complete history, live vibration trends and maintenance reports for the BM-04 Blow Molding Unit at Reliance Industries.",
+          "Complete history, live vibration trends and maintenance reports for AHU-Quench SH1 at Reliance Industries.",
       },
-      { property: "og:title", content: "Machine 360 — BM-04 Blow Molding Unit" },
+      { property: "og:title", content: "AHU-Quench SH1 · Machine 360" },
       {
         property: "og:description",
         content:
-          "Specs, parts history, vibration analytics and maintenance reports — everything about one machine in one place.",
+          "Specs, parts history, live readings, vibration analytics and maintenance reports.",
       },
     ],
   }),
   component: MachinePage,
 });
 
-/* ---------------- DATA (mock — one machine) ---------------- */
+/* ---------------- DATA ---------------- */
 
 const machine = {
-  name: "Blow Molding Unit BM-04",
+  name: "AHU-Quench SH1",
+  type: "Air Handling Unit — Quench",
+  assetId: "AHU-QUENCH-SH1",
   model: "Krupp Kautex KBB-50",
-  tag: "RIL-VAD-BM-04",
-  location: "Vadodara Plant · Bay 3 · Line B",
+  location: "PSF CP4 Plant · Bay 3",
+  function: "Supply air system — supplies clean & conditioned quench air",
   installed: "12 Aug 2018",
-  lastMaintenance: "14 Jun 2026",
-  status: "Operational",
+  status: "operational" as "operational" | "warning" | "critical",
 };
 
 const specs = [
@@ -59,9 +64,42 @@ const specs = [
   { label: "Clamp Force", value: "500 kN", icon: Gauge },
   { label: "Shot Weight", value: "1,200 g", icon: Hash },
   { label: "Cycle Time", value: "18 s", icon: Activity },
-  { label: "Operating Temp", value: "180 – 230 °C", icon: Cog },
-  { label: "Air Pressure", value: "8 – 10 bar", icon: Settings },
+  { label: "Operating Temp", value: "180–230 °C", icon: Cog },
+  { label: "Air Pressure", value: "8–10 bar", icon: Settings },
 ];
+
+const liveData = [
+  {
+    label: "Vibration",
+    value: "5.9",
+    unit: "mm/s",
+    detail: "Blower DE · trend ↑",
+    level: "warning" as const,
+    icon: Waves,
+  },
+  {
+    label: "Bearing Temp",
+    value: "62",
+    unit: "°C",
+    detail: "Within range",
+    level: "ok" as const,
+    icon: Thermometer,
+  },
+  {
+    label: "Filter ΔP",
+    value: "1.4",
+    unit: "bar",
+    detail: "Replace > 1.8",
+    level: "ok" as const,
+    icon: Droplets,
+  },
+];
+
+const maintenanceSummary = {
+  preventive: { last: "14 Jun 2026", next: "14 Sep 2026" },
+  llf: { last: "02 May 2026", next: "02 Aug 2026" },
+  installed: "12 Aug 2018",
+};
 
 type PartEvent = {
   date: string;
@@ -69,7 +107,6 @@ type PartEvent = {
   note: string;
   reason?: string;
 };
-
 type Part = {
   id: string;
   name: string;
@@ -128,8 +165,7 @@ const parts: Part[] = [
         date: "17 Aug 2025",
         type: "failed",
         note: "Pressure drop below 6 bar",
-        reason:
-          "Internal seal degradation in pump head. Rebuilt pump cartridge, flushed lines.",
+        reason: "Internal seal degradation in pump head. Rebuilt pump cartridge, flushed lines.",
       },
     ],
   },
@@ -175,33 +211,49 @@ const breakdowns = [
   },
 ];
 
-/* ---------------- GRAPH DATA ---------------- */
+/* ---------------- GRAPH DATA: Motor & Blower × DE / NDE ---------------- */
 
 type Reading = { t: string; v: number };
+type PartKey = "motor" | "blower";
+type SideKey = "DE" | "NDE";
 
-const vibrationData: Record<"blow" | "motor", Reading[]> = {
-  blow: [
-    { t: "08:00", v: 2.1 },
-    { t: "09:00", v: 2.4 },
-    { t: "10:00", v: 3.2 },
-    { t: "11:00", v: 4.1 },
-    { t: "12:00", v: 5.8 },
-    { t: "13:00", v: 6.4 },
-    { t: "14:00", v: 5.9 },
-    { t: "15:00", v: 7.2 },
-    { t: "16:00", v: 6.1 },
-  ],
-  motor: [
-    { t: "08:00", v: 1.2 },
-    { t: "09:00", v: 1.4 },
-    { t: "10:00", v: 1.8 },
-    { t: "11:00", v: 2.1 },
-    { t: "12:00", v: 2.5 },
-    { t: "13:00", v: 2.3 },
-    { t: "14:00", v: 2.6 },
-    { t: "15:00", v: 3.0 },
-    { t: "16:00", v: 2.8 },
-  ],
+const vibration: Record<PartKey, Record<SideKey, Reading[]>> = {
+  motor: {
+    DE: [
+      { t: "08:00", v: 1.2 },
+      { t: "10:00", v: 1.6 },
+      { t: "12:00", v: 1.9 },
+      { t: "14:00", v: 2.1 },
+      { t: "16:00", v: 2.4 },
+      { t: "18:00", v: 2.1 },
+    ],
+    NDE: [
+      { t: "08:00", v: 1.4 },
+      { t: "10:00", v: 1.8 },
+      { t: "12:00", v: 2.3 },
+      { t: "14:00", v: 2.6 },
+      { t: "16:00", v: 2.9 },
+      { t: "18:00", v: 2.8 },
+    ],
+  },
+  blower: {
+    DE: [
+      { t: "08:00", v: 2.1 },
+      { t: "10:00", v: 3.2 },
+      { t: "12:00", v: 4.4 },
+      { t: "14:00", v: 5.1 },
+      { t: "16:00", v: 5.8 },
+      { t: "18:00", v: 5.9 },
+    ],
+    NDE: [
+      { t: "08:00", v: 2.6 },
+      { t: "10:00", v: 4.0 },
+      { t: "12:00", v: 5.4 },
+      { t: "14:00", v: 6.3 },
+      { t: "16:00", v: 6.9 },
+      { t: "18:00", v: 7.2 },
+    ],
+  },
 };
 
 const OK_MAX = 3;
@@ -268,46 +320,42 @@ const reports = [
   },
 ];
 
-/* ---------------- COMPONENT ---------------- */
+/* ============================================================ */
 
 function MachinePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-24">
       <Header />
-      <main className="mx-auto max-w-7xl px-6 py-10 space-y-16">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-10 sm:space-y-16">
         <SectionOverview />
         <SectionGraph />
         <SectionReports />
       </main>
-      <footer className="border-t border-border mt-16">
-        <div className="mx-auto max-w-7xl px-6 py-6 text-xs text-muted-foreground flex justify-between">
+      <footer className="border-t border-border mt-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 text-xs text-muted-foreground flex flex-col sm:flex-row gap-1 sm:justify-between">
           <span>Reliance Industries · Maintenance Intelligence</span>
-          <span>v0.1 · Internal preview</span>
+          <span>v0.2 · Internal preview</span>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   );
 }
 
 function Header() {
   return (
-    <header className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-10">
-      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-lg bg-primary/10 text-primary grid place-items-center">
-            <Factory className="size-5" />
+    <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="size-8 sm:size-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+            <Factory className="size-4 sm:size-5" />
           </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">Machine 360</div>
-            <div className="text-xs text-muted-foreground">Reliance Industries</div>
+          <div className="leading-tight min-w-0">
+            <div className="text-sm font-semibold truncate">Machine 360</div>
+            <div className="text-[11px] text-muted-foreground truncate">Reliance Industries</div>
           </div>
         </div>
-        <nav className="hidden md:flex gap-6 text-sm text-muted-foreground">
-          <a href="#overview" className="hover:text-foreground">Overview</a>
-          <a href="#vibration" className="hover:text-foreground">Vibration</a>
-          <a href="#reports" className="hover:text-foreground">Reports</a>
-        </nav>
-        <StatusPill status="ok" label="Operational" />
+        <StatusPill status="warning" label="Warning" />
       </div>
     </header>
   );
@@ -320,144 +368,156 @@ function SectionOverview() {
   const [openEvent, setOpenEvent] = useState<string | null>(null);
 
   return (
-    <section id="overview" className="space-y-6">
+    <section id="overview" className="space-y-5 sm:space-y-6">
       <SectionHeader
         eyebrow="Section 01"
         title="Machine Overview"
-        subtitle="Specifications, parts and complete service history."
+        subtitle="Basic info, live readings and complete service history."
       />
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="aspect-[16/7] overflow-hidden bg-muted">
-            <img
-              src={machineImg}
-              alt={machine.name}
-              width={1024}
-              height={1024}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="p-6">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              {machine.tag}
-            </div>
-            <h3 className="text-2xl font-semibold mt-1">{machine.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">Model {machine.model}</p>
-
-            <div className="grid sm:grid-cols-2 gap-3 mt-5 text-sm">
-              <InfoRow icon={MapPin} label="Location" value={machine.location} />
-              <InfoRow icon={Calendar} label="Installed" value={machine.installed} />
-              <InfoRow icon={Wrench} label="Last Maintenance" value={machine.lastMaintenance} />
-              <InfoRow icon={ShieldCheck} label="Status" value={machine.status} />
-            </div>
-          </div>
+      {/* Hero card */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="aspect-[3/2] sm:aspect-[16/6] overflow-hidden bg-muted">
+          <img
+            src={machineImg}
+            alt={machine.name}
+            width={1024}
+            height={1024}
+            className="w-full h-full object-cover"
+          />
         </div>
+        <div className="p-5 sm:p-6">
+          <div className="text-[11px] uppercase tracking-wider text-primary font-medium">
+            {machine.type}
+          </div>
+          <h3 className="text-xl sm:text-2xl font-semibold mt-1 leading-tight">{machine.name}</h3>
+          <p className="text-sm text-muted-foreground mt-1.5">{machine.function}</p>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Specifications
-          </h4>
-          <ul className="mt-4 space-y-3">
-            {specs.map((s) => (
-              <li key={s.label} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <s.icon className="size-4" />
-                  {s.label}
-                </span>
-                <span className="font-medium">{s.value}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
+            <InfoRow icon={Hash} label="Asset ID" value={machine.assetId} />
+            <InfoRow icon={MapPin} label="Location" value={machine.location} />
+            <InfoRow icon={Cog} label="Model" value={machine.model} />
+            <InfoRow icon={Calendar} label="Installed" value={machine.installed} />
+          </div>
         </div>
       </div>
 
-      {/* Parts & events */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold">Parts &amp; Tools</h4>
-            <span className="text-xs text-muted-foreground">{parts.length} tracked</span>
-          </div>
-          <div className="space-y-2">
-            {parts.map((p) => {
-              const isOpen = openPart === p.id;
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-border overflow-hidden bg-background"
+      {/* Live Condition Data */}
+      <div>
+        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-1">
+          Live Condition Data
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {liveData.map((d) => (
+            <LiveStat key={d.label} {...d} />
+          ))}
+        </div>
+      </div>
+
+      {/* Specs */}
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Specifications
+        </h4>
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+          {specs.map((s) => (
+            <li
+              key={s.label}
+              className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
+            >
+              <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                <s.icon className="size-4 shrink-0" />
+                <span className="truncate">{s.label}</span>
+              </span>
+              <span className="font-medium shrink-0">{s.value}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Parts */}
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-semibold">Parts &amp; Tools</h4>
+          <span className="text-xs text-muted-foreground">{parts.length} tracked</span>
+        </div>
+        <div className="space-y-2">
+          {parts.map((p) => {
+            const isOpen = openPart === p.id;
+            return (
+              <div
+                key={p.id}
+                className="rounded-xl border border-border overflow-hidden bg-background"
+              >
+                <button
+                  onClick={() => setOpenPart(isOpen ? null : p.id)}
+                  className="w-full flex items-center justify-between px-3.5 py-3 text-left hover:bg-accent transition-colors gap-2"
                 >
-                  <button
-                    onClick={() => setOpenPart(isOpen ? null : p.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <HealthDot level={p.health} />
-                      <div>
-                        <div className="text-sm font-medium">{p.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {p.serial} · installed {p.installed}
-                        </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <HealthDot level={p.health} />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{p.name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {p.serial} · installed {p.installed}
                       </div>
                     </div>
-                    <ChevronRight
-                      className={`size-4 text-muted-foreground transition-transform ${
-                        isOpen ? "rotate-90" : ""
-                      }`}
-                    />
-                  </button>
-                  {isOpen && (
-                    <ul className="border-t border-border bg-muted/40 px-4 py-3 space-y-2">
-                      {p.events.map((e, i) => {
-                        const key = `${p.id}-${i}`;
-                        const expanded = openEvent === key;
-                        return (
-                          <li key={key}>
-                            <button
-                              onClick={() =>
-                                e.reason && setOpenEvent(expanded ? null : key)
-                              }
-                              className={`w-full text-left flex items-start gap-3 py-1.5 ${
-                                e.reason ? "cursor-pointer" : "cursor-default"
-                              }`}
-                            >
-                              <EventBadge type={e.type} />
-                              <div className="flex-1">
-                                <div className="text-sm">
-                                  <span className="font-medium">{e.date}</span>
-                                  <span className="text-muted-foreground"> · {e.note}</span>
-                                </div>
-                                {expanded && e.reason && (
-                                  <div className="mt-2 text-xs text-muted-foreground rounded-md bg-card border border-border p-3">
-                                    <span className="font-medium text-foreground">
-                                      Reason:{" "}
-                                    </span>
-                                    {e.reason}
-                                  </div>
-                                )}
+                  </div>
+                  <ChevronRight
+                    className={`size-4 text-muted-foreground transition-transform shrink-0 ${
+                      isOpen ? "rotate-90" : ""
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <ul className="border-t border-border bg-muted/40 px-3.5 py-3 space-y-1">
+                    {p.events.map((e, i) => {
+                      const key = `${p.id}-${i}`;
+                      const expanded = openEvent === key;
+                      return (
+                        <li key={key}>
+                          <button
+                            onClick={() => e.reason && setOpenEvent(expanded ? null : key)}
+                            className={`w-full text-left flex items-start gap-3 py-1.5 ${
+                              e.reason ? "cursor-pointer" : "cursor-default"
+                            }`}
+                          >
+                            <EventBadge type={e.type} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm">
+                                <span className="font-medium">{e.date}</span>
+                                <span className="text-muted-foreground"> · {e.note}</span>
                               </div>
-                              {e.reason && (
-                                <ChevronRight
-                                  className={`size-3.5 text-muted-foreground mt-1 transition-transform ${
-                                    expanded ? "rotate-90" : ""
-                                  }`}
-                                />
+                              {expanded && e.reason && (
+                                <div className="mt-2 text-xs text-muted-foreground rounded-md bg-card border border-border p-3">
+                                  <span className="font-medium text-foreground">Reason: </span>
+                                  {e.reason}
+                                </div>
                               )}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                            </div>
+                            {e.reason && (
+                              <ChevronRight
+                                className={`size-3.5 text-muted-foreground mt-1 transition-transform shrink-0 ${
+                                  expanded ? "rotate-90" : ""
+                                }`}
+                              />
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
+      </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      {/* Breakdowns + Maintenance summary */}
+      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
           <h4 className="font-semibold mb-4">Breakdown History</h4>
-          <ol className="relative border-l border-border ml-2 space-y-5">
+          <ol className="relative border-l border-border ml-1.5 space-y-5">
             {breakdowns.map((b) => (
               <li key={b.date} className="pl-5">
                 <span className="absolute -left-1.5 mt-1.5 size-3 rounded-full bg-primary ring-4 ring-background" />
@@ -465,7 +525,7 @@ function SectionOverview() {
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {b.date} · downtime {b.duration}
                 </div>
-                <div className="mt-2 grid sm:grid-cols-2 gap-2 text-xs">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="rounded-md bg-muted px-3 py-2">
                     <div className="text-muted-foreground">Root cause</div>
                     <div className="text-foreground mt-0.5">{b.rootCause}</div>
@@ -479,6 +539,29 @@ function SectionOverview() {
             ))}
           </ol>
         </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+          <h4 className="font-semibold mb-4">Maintenance Summary</h4>
+          <div className="space-y-4">
+            <MaintBlock
+              title="Preventive Maintenance"
+              last={maintenanceSummary.preventive.last}
+              next={maintenanceSummary.preventive.next}
+            />
+            <MaintBlock
+              title="LLF Inspection"
+              last={maintenanceSummary.llf.last}
+              next={maintenanceSummary.llf.next}
+            />
+            <div className="rounded-xl border border-border p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-sm">
+                <ShieldCheck className="size-4 text-primary" />
+                <span className="text-muted-foreground">Installed</span>
+              </div>
+              <span className="text-sm font-medium">{maintenanceSummary.installed}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -487,56 +570,76 @@ function SectionOverview() {
 /* ===== SECTION 2 ===== */
 
 function SectionGraph() {
-  const [selected, setSelected] = useState<"blow" | "motor">("blow");
-  const data = vibrationData[selected];
+  const [part, setPart] = useState<PartKey>("blower");
+  const [side, setSide] = useState<SideKey>("NDE");
+  const data = vibration[part][side];
   const current = data[data.length - 1].v;
   const status = levelOf(current);
 
   return (
-    <section id="vibration" className="space-y-6">
+    <section id="vibration" className="space-y-5 sm:space-y-6">
       <SectionHeader
         eyebrow="Section 02"
         title="Vibration Trend"
-        subtitle="Live signal status across critical parts."
+        subtitle="Live signal across Motor & Blower — Drive End / Non-Drive End."
       />
 
       <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-        {/* Status strip */}
         <div className="grid grid-cols-3 border-b border-border">
-          <StatusBar level="ok" active={status === "ok"} label="OK · 0 – 3 mm/s" />
+          <StatusBar level="ok" active={status === "ok"} short="OK" full="0–3 mm/s" />
           <StatusBar
             level="warning"
             active={status === "warning"}
-            label="Warning · 3 – 6 mm/s"
+            short="Warning"
+            full="3–6 mm/s"
           />
           <StatusBar
             level="critical"
             active={status === "critical"}
-            label="Critical · > 6 mm/s"
+            short="Critical"
+            full="> 6 mm/s"
           />
         </div>
 
-        <div className="p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex gap-2">
-              {(["blow", "motor"] as const).map((k) => (
+        <div className="p-4 sm:p-6 space-y-4">
+          {/* Part selector */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+              {(["motor", "blower"] as const).map((k) => (
                 <button
                   key={k}
-                  onClick={() => setSelected(k)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    selected === k
+                  onClick={() => setPart(k)}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                    part === k
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background text-foreground border-border hover:bg-accent"
                   }`}
                 >
-                  {k === "blow" ? "Blow Part" : "Motor"}
+                  {k === "motor" ? "Motor" : "Blower"}
                 </button>
               ))}
             </div>
-            <div className="text-sm text-muted-foreground">
-              Latest reading{" "}
+            <div className="text-sm text-muted-foreground w-full sm:w-auto sm:text-right">
+              Latest{" "}
               <span className="font-semibold text-foreground">{current.toFixed(1)} mm/s</span>
             </div>
+          </div>
+
+          {/* DE / NDE toggle */}
+          <div className="inline-flex p-1 rounded-lg bg-muted text-sm">
+            {(["DE", "NDE"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSide(s)}
+                className={`px-3.5 py-1.5 rounded-md font-medium transition-colors ${
+                  side === s
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "DE" ? "Drive End" : "Non-Drive End"}
+              </button>
+            ))}
           </div>
 
           <VibrationChart data={data} />
@@ -548,7 +651,7 @@ function SectionGraph() {
 
 function VibrationChart({ data }: { data: Reading[] }) {
   const W = 800;
-  const H = 320;
+  const H = 300;
   const PAD_L = 56;
   const PAD_R = 16;
   const PAD_T = 16;
@@ -567,8 +670,8 @@ function VibrationChart({ data }: { data: Reading[] }) {
   const warnY = yOf(WARN_MAX);
 
   return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[320px]">
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[260px] sm:h-[300px]">
         <defs>
           <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.25" />
@@ -576,7 +679,6 @@ function VibrationChart({ data }: { data: Reading[] }) {
           </linearGradient>
         </defs>
 
-        {/* Threshold bands */}
         <rect
           x={PAD_L}
           y={PAD_T}
@@ -602,15 +704,27 @@ function VibrationChart({ data }: { data: Reading[] }) {
           opacity="0.07"
         />
 
-        {/* Threshold lines */}
-        <line x1={PAD_L} x2={W - PAD_R} y1={okY} y2={okY} stroke="var(--success)" strokeDasharray="4 4" />
-        <line x1={PAD_L} x2={W - PAD_R} y1={warnY} y2={warnY} stroke="var(--critical)" strokeDasharray="4 4" />
+        <line
+          x1={PAD_L}
+          x2={W - PAD_R}
+          y1={okY}
+          y2={okY}
+          stroke="var(--success)"
+          strokeDasharray="4 4"
+        />
+        <line
+          x1={PAD_L}
+          x2={W - PAD_R}
+          y1={warnY}
+          y2={warnY}
+          stroke="var(--critical)"
+          strokeDasharray="4 4"
+        />
 
-        {/* Y axis labels (vibration level) */}
         {[
           { v: 1.5, label: "OK" },
-          { v: 4.5, label: "Warning" },
-          { v: 7.5, label: "Critical" },
+          { v: 4.5, label: "Warn" },
+          { v: 7.5, label: "Crit" },
         ].map((t) => (
           <text
             key={t.label}
@@ -625,7 +739,6 @@ function VibrationChart({ data }: { data: Reading[] }) {
           </text>
         ))}
 
-        {/* X axis (timestamps) */}
         <line
           x1={PAD_L}
           x2={W - PAD_R}
@@ -646,11 +759,9 @@ function VibrationChart({ data }: { data: Reading[] }) {
           </text>
         ))}
 
-        {/* Area + line */}
         <path d={area} fill="url(#fill)" />
         <path d={path} fill="none" stroke="var(--primary)" strokeWidth="2.5" />
 
-        {/* Points */}
         {data.map((d, i) => {
           const lvl = levelOf(d.v);
           const color =
@@ -660,14 +771,20 @@ function VibrationChart({ data }: { data: Reading[] }) {
               ? "var(--warning)"
               : "var(--critical)";
           return (
-            <g key={i}>
-              <circle cx={xOf(i)} cy={yOf(d.v)} r="4" fill={color} stroke="var(--card)" strokeWidth="2" />
-            </g>
+            <circle
+              key={i}
+              cx={xOf(i)}
+              cy={yOf(d.v)}
+              r="4"
+              fill={color}
+              stroke="var(--card)"
+              strokeWidth="2"
+            />
           );
         })}
       </svg>
       <div className="mt-2 text-xs text-muted-foreground text-center">
-        X: vibration level &nbsp;·&nbsp; Y: timestamp
+        X: vibration level &nbsp;·&nbsp; Y: timestamp (mm/s)
       </div>
     </div>
   );
@@ -680,43 +797,50 @@ function SectionReports() {
   const r = reports[active];
 
   return (
-    <section id="reports" className="space-y-6">
+    <section id="reports" className="space-y-5 sm:space-y-6">
       <SectionHeader
         eyebrow="Section 03"
         title="Last 5 Maintenance Reports"
         subtitle="Technician notes, before/after photos and root cause."
       />
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-        <div className="rounded-2xl border border-border bg-card p-2 shadow-sm h-fit">
-          {reports.map((rep, i) => (
-            <button
-              key={rep.date + i}
-              onClick={() => setActive(i)}
-              className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                active === i ? "bg-primary/10" : "hover:bg-accent"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{rep.task}</div>
-                {active === i && <span className="size-2 rounded-full bg-primary" />}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                <Calendar className="size-3" />
-                {rep.date}
-                <span>·</span>
-                <User className="size-3" />
-                {rep.technician}
-              </div>
-            </button>
-          ))}
+      <div className="grid lg:grid-cols-[320px_1fr] gap-5 sm:gap-6">
+        {/* Mobile: horizontal scroller. Desktop: vertical list */}
+        <div className="lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-2 lg:shadow-sm">
+          <div className="flex lg:flex-col gap-2 lg:gap-1 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0 pb-1 lg:pb-0 snap-x snap-mandatory">
+            {reports.map((rep, i) => (
+              <button
+                key={rep.date + i}
+                onClick={() => setActive(i)}
+                className={`shrink-0 lg:shrink w-[240px] lg:w-full text-left px-4 py-3 rounded-xl border lg:border-0 snap-start transition-colors ${
+                  active === i
+                    ? "bg-primary/10 border-primary/30 lg:border-0"
+                    : "bg-card hover:bg-accent border-border"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium truncate">{rep.task}</div>
+                  {active === i && (
+                    <span className="size-2 rounded-full bg-primary shrink-0" />
+                  )}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 truncate">
+                  <Calendar className="size-3 shrink-0" />
+                  {rep.date}
+                  <span>·</span>
+                  <User className="size-3 shrink-0" />
+                  <span className="truncate">{rep.technician}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="text-xl font-semibold">{r.task}</h3>
-              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-3">
+            <div className="min-w-0">
+              <h3 className="text-lg sm:text-xl font-semibold">{r.task}</h3>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="size-3.5" /> {r.date}
                 </span>
@@ -725,25 +849,25 @@ function SectionReports() {
                 </span>
               </div>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-success/15 text-success font-medium border border-success/20">
+            <span className="text-[11px] sm:text-xs px-2.5 py-1 rounded-full bg-success/15 text-success font-medium border border-success/20">
               Completed
             </span>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <PhotoCard label="Before" src={r.before} />
             <PhotoCard label="After" src={r.after} />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="rounded-xl bg-muted p-4">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <FileText className="size-3.5" /> Technician notes
               </div>
               <p className="text-sm mt-2 leading-relaxed">{r.notes}</p>
             </div>
             <div className="rounded-xl bg-muted p-4">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <AlertTriangle className="size-3.5" /> Root cause
               </div>
               <p className="text-sm mt-2 leading-relaxed">{r.rootCause}</p>
@@ -767,11 +891,11 @@ function SectionHeader({
   subtitle: string;
 }) {
   return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
+    <div className="px-1">
+      <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
         {eyebrow}
       </div>
-      <h2 className="text-3xl font-semibold mt-1.5 tracking-tight">{title}</h2>
+      <h2 className="text-2xl sm:text-3xl font-semibold mt-1.5 tracking-tight">{title}</h2>
       <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
     </div>
   );
@@ -787,11 +911,75 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-      <Icon className="size-4 text-muted-foreground" />
-      <div className="leading-tight">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="text-sm font-medium">{value}</div>
+    <div className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 min-w-0">
+      <Icon className="size-4 text-muted-foreground shrink-0" />
+      <div className="leading-tight min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium truncate">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function LiveStat({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  detail,
+  level,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  unit: string;
+  detail: string;
+  level: "ok" | "warning" | "critical";
+}) {
+  const ring =
+    level === "ok"
+      ? "border-success/30 bg-success/5"
+      : level === "warning"
+      ? "border-warning/40 bg-warning/5"
+      : "border-critical/30 bg-critical/5";
+  const dot =
+    level === "ok" ? "bg-success" : level === "warning" ? "bg-warning" : "bg-critical";
+  return (
+    <div className={`rounded-2xl border ${ring} p-4 sm:p-5 shadow-sm`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Icon className="size-4" />
+          {label}
+        </div>
+        <span className={`size-2 rounded-full ${dot}`} />
+      </div>
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="text-3xl font-semibold tracking-tight">{value}</span>
+        <span className="text-sm text-muted-foreground">{unit}</span>
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">{detail}</div>
+    </div>
+  );
+}
+
+function MaintBlock({ title, last, next }: { title: string; last: string; next: string }) {
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <div className="text-sm font-medium flex items-center gap-2">
+        <Wrench className="size-4 text-primary" />
+        {title}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Last</div>
+          <div className="font-medium mt-0.5">{last}</div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Next due
+          </div>
+          <div className="font-medium mt-0.5 text-primary">{next}</div>
+        </div>
       </div>
     </div>
   );
@@ -799,11 +987,7 @@ function InfoRow({
 
 function HealthDot({ level }: { level: "good" | "warning" | "critical" }) {
   const cls =
-    level === "good"
-      ? "bg-success"
-      : level === "warning"
-      ? "bg-warning"
-      : "bg-critical";
+    level === "good" ? "bg-success" : level === "warning" ? "bg-warning" : "bg-critical";
   return <span className={`size-2.5 rounded-full ${cls} shrink-0`} />;
 }
 
@@ -821,18 +1005,26 @@ function EventBadge({ type }: { type: PartEvent["type"] }) {
   );
 }
 
-function StatusPill({ status, label }: { status: "ok" | "warning" | "critical"; label: string }) {
+function StatusPill({
+  status,
+  label,
+}: {
+  status: "ok" | "warning" | "critical";
+  label: string;
+}) {
   const cls =
     status === "ok"
       ? "bg-success/10 text-success border-success/20"
       : status === "warning"
       ? "bg-warning/15 text-warning border-warning/30"
       : "bg-critical/10 text-critical border-critical/20";
+  const dot =
+    status === "ok" ? "bg-success" : status === "warning" ? "bg-warning" : "bg-critical";
   return (
-    <span className={`text-xs font-medium px-3 py-1.5 rounded-full border ${cls} flex items-center gap-2`}>
-      <span className={`size-1.5 rounded-full ${
-        status === "ok" ? "bg-success" : status === "warning" ? "bg-warning" : "bg-critical"
-      }`} />
+    <span
+      className={`text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full border ${cls} flex items-center gap-1.5 shrink-0`}
+    >
+      <span className={`size-1.5 rounded-full ${dot}`} />
       {label}
     </span>
   );
@@ -841,24 +1033,29 @@ function StatusPill({ status, label }: { status: "ok" | "warning" | "critical"; 
 function StatusBar({
   level,
   active,
-  label,
+  short,
+  full,
 }: {
   level: "ok" | "warning" | "critical";
   active: boolean;
-  label: string;
+  short: string;
+  full: string;
 }) {
   const color =
     level === "ok" ? "bg-success" : level === "warning" ? "bg-warning" : "bg-critical";
   return (
     <div
-      className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-r border-border last:border-r-0 ${
+      className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-medium border-r border-border last:border-r-0 ${
         active ? "bg-muted" : ""
       }`}
     >
-      <span className={`size-2.5 rounded-full ${color} ${active ? "ring-4 ring-offset-0" : ""}`}
-        style={active ? { boxShadow: `0 0 0 4px color-mix(in oklch, var(--${level === "ok" ? "success" : level === "warning" ? "warning" : "critical"}) 20%, transparent)` } : undefined}
-      />
-      <span className={active ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+      <span className={`size-2.5 rounded-full ${color}`} />
+      <span className={active ? "text-foreground" : "text-muted-foreground"}>
+        <span className="sm:hidden">{short}</span>
+        <span className="hidden sm:inline">
+          {short} · {full}
+        </span>
+      </span>
     </div>
   );
 }
@@ -876,7 +1073,7 @@ function PhotoCard({ label, src }: { label: string; src: string }) {
           className="w-full h-full object-cover"
         />
       </div>
-      <div className="px-4 py-2.5 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+      <div className="px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
         {label}
       </div>
     </div>
