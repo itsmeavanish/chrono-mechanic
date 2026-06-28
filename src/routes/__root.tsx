@@ -76,7 +76,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
       { title: "Machine360" },
       { name: "description", content: "Machine Chronicle provides a centralized platform for detailed machine information and maintenance history." },
       { name: "author", content: "Lovable" },

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, Send, Sparkles, X, Loader2 } from "lucide-react";
+import { Bot, Send, MessageSquare, X, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { askMachine } from "@/lib/chat.functions";
 
@@ -73,7 +73,7 @@ export function ChatWidget() {
           className="fixed bottom-5 right-5 z-40 size-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 grid place-items-center hover:scale-105 active:scale-95 transition-transform"
           aria-label="Open machine assistant"
         >
-          <Sparkles className="size-6" />
+          <MessageSquare className="size-6" />
         </button>
       )}
 
@@ -154,7 +154,7 @@ export function ChatWidget() {
               e.preventDefault();
               send(input);
             }}
-            className="border-t border-border p-3 bg-card flex items-end gap-2"
+            className="border-t border-border p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] bg-card flex items-end gap-2"
           >
             <textarea
               ref={inputRef}
@@ -168,7 +168,7 @@ export function ChatWidget() {
               }}
               placeholder="Ask about this machine…"
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring max-h-32"
+              className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring max-h-32"
             />
             <button
               type="submit"
