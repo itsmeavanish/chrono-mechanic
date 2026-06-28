@@ -806,7 +806,7 @@ function SectionReports() {
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-5 sm:gap-6">
         {/* Mobile: horizontal scroller. Desktop: vertical list */}
-        <div className="lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-2 lg:shadow-sm">
+        <div className="min-w-0 lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-2 lg:shadow-sm">
           <div className="flex lg:flex-col gap-2 lg:gap-1 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0 pb-1 lg:pb-0 snap-x snap-mandatory">
             {reports.map((rep, i) => (
               <button
@@ -836,7 +836,7 @@ function SectionReports() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
+        <div className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-lg sm:text-xl font-semibold">{r.task}</h3>
@@ -1062,7 +1062,7 @@ function StatusBar({
 
 function PhotoCard({ label, src }: { label: string; src: string }) {
   return (
-    <div className="rounded-xl overflow-hidden border border-border bg-background">
+    <div className="min-w-0 rounded-xl overflow-hidden border border-border bg-background">
       <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={src}
