@@ -187,13 +187,29 @@ const parts: Part[] = [
   },
 ];
 
-const breakdowns: Array<{
-  date: string;
-  duration: string;
-  issue: string;
-  rootCause: string;
-  action: string;
-}> = [];
+const breakdowns = [
+  {
+    date: "20 Jun 2026",
+    duration: "3h 20m",
+    issue: "Heater Zone-3 open circuit",
+    rootCause: "Element burnout (life expired)",
+    action: "Bypassed zone, scheduled replacement band ETA 28 Jun",
+  },
+  {
+    date: "22 Feb 2026",
+    duration: "5h 10m",
+    issue: "Blow pin seal failure",
+    rootCause: "Worn O-ring under high-pressure cycle",
+    action: "Replaced seal kit, re-torqued housing, updated PM interval to 90 days",
+  },
+  {
+    date: "08 Jan 2026",
+    duration: "2h 45m",
+    issue: "Motor overheat trip",
+    rootCause: "Obstructed cooling intake",
+    action: "Cleared debris, replaced thermal sensor, added monthly intake check",
+  },
+];
 
 /* ---------------- GRAPH DATA: Motor & Blower × DE / NDE ---------------- */
 
