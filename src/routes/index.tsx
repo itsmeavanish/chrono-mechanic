@@ -180,7 +180,7 @@ function SectionOverview() {
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {liveData.map((d) => (
-            <LiveStat key={d.label} {...d} />
+            <LiveStat key={d.label} {...d} icon={LIVE_ICONS[d.label] ?? Activity} />
           ))}
         </div>
       </div>
