@@ -191,18 +191,21 @@ function SectionOverview() {
           Specifications
         </h4>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-          {specs.map((s) => (
-            <li
-              key={s.label}
-              className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
-            >
-              <span className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <s.icon className="size-4 shrink-0" />
-                <span className="truncate">{s.label}</span>
-              </span>
-              <span className="font-medium shrink-0">{s.value}</span>
-            </li>
-          ))}
+          {specs.map((s) => {
+            const Icon = SPEC_ICONS[s.label] ?? Settings;
+            return (
+              <li
+                key={s.label}
+                className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
+              >
+                <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{s.label}</span>
+                </span>
+                <span className="font-medium shrink-0">{s.value}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
