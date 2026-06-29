@@ -133,8 +133,10 @@ function Header() {
 /* ===== SECTION 1 ===== */
 
 function SectionOverview() {
-  const [openPart, setOpenPart] = useState<string | null>("blow");
+  const { machine, specs, liveData, parts, breakdowns, maintenanceSummary } = useMachineData();
+  const [openPart, setOpenPart] = useState<string | null>(parts[0]?.id ?? null);
   const [openEvent, setOpenEvent] = useState<string | null>(null);
+
 
   return (
     <section id="overview" className="space-y-5 sm:space-y-6">
