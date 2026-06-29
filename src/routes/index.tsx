@@ -98,6 +98,9 @@ function MachinePage() {
 }
 
 function Header() {
+  const { machine } = useMachineData();
+  const label =
+    machine.status === "ok" ? "Operational" : machine.status === "warning" ? "Warning" : "Critical";
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
@@ -110,11 +113,22 @@ function Header() {
             <div className="text-[11px] text-muted-foreground truncate">Reliance Industries</div>
           </div>
         </div>
-        <StatusPill status="warning" label="Warning" />
+        <div className="flex items-center gap-2 shrink-0">
+          <StatusPill status={machine.status} label={label} />
+          <Link
+            to="/edit"
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent transition-colors"
+          >
+            <Pencil className="size-3.5" />
+            <span className="hidden sm:inline">Edit data</span>
+            <span className="sm:hidden">Edit</span>
+          </Link>
+        </div>
       </div>
     </header>
   );
 }
+
 
 /* ===== SECTION 1 ===== */
 
