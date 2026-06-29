@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Activity,
@@ -13,7 +13,6 @@ import {
   Gauge,
   Hash,
   MapPin,
-  Pencil,
   Settings,
   ShieldCheck,
   Thermometer,
@@ -22,15 +21,10 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import machineImg from "@/assets/machine.jpg";
+import machineImg from "@/assets/machine.jpeg";
+import beforeImg from "@/assets/before.jpg";
+import afterImg from "@/assets/after.jpg";
 import { ChatWidget } from "@/components/ChatWidget";
-import {
-  useMachineData,
-  type PartEvent,
-  type Reading,
-  type PartKey,
-  type SideKey,
-} from "@/lib/machine-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,18 +46,214 @@ export const Route = createFileRoute("/")({
   component: MachinePage,
 });
 
-const SPEC_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "Rated Power": Zap,
-  "Clamp Force": Gauge,
-  "Shot Weight": Hash,
-  "Cycle Time": Activity,
-  "Operating Temp": Cog,
-  "Air Pressure": Settings,
+/* ---------------- DATA ---------------- */
+
+const machine = {
+  name: "AHU-Quench SH1",
+  type: "Air Handling Unit — Quench",
+  assetId: "AHU-QUENCH-SH1",
+  model: "Krupp Kautex KBB-50",
+  location: "PSF CP4 Plant · Bay 3",
+  function: "Supply air system — supplies clean & conditioned quench air",
+  installed: "12 Aug 2018",
+  status: "operational" as "operational" | "warning" | "critical",
 };
-const LIVE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Vibration: Waves,
-  "Bearing Temp": Thermometer,
-  "Filter ΔP": Droplets,
+
+const specs = [
+  { label: "Rated Power", value: "75 kW", icon: Zap },
+  { label: "Clamp Force", value: "500 kN", icon: Gauge },
+  { label: "Shot Weight", value: "1,200 g", icon: Hash },
+  { label: "Cycle Time", value: "18 s", icon: Activity },
+  { label: "Operating Temp", value: "180–230 °C", icon: Cog },
+  { label: "Air Pressure", value: "8–10 bar", icon: Settings },
+];
+
+const liveData = [
+  {
+    label: "Vibration",
+    value: "5.9",
+    unit: "mm/s",
+    detail: "Blower DE · trend ↑",
+    level: "warning" as const,
+    icon: Waves,
+  },
+  {
+    label: "Bearing Temp",
+    value: "62",
+    unit: "°C",
+    detail: "Within range",
+    level: "ok" as const,
+    icon: Thermometer,
+  },
+  {
+    label: "Filter ΔP",
+    value: "1.4",
+    unit: "bar",
+    detail: "Replace > 1.8",
+    level: "ok" as const,
+    icon: Droplets,
+  },
+];
+
+const maintenanceSummary = {
+  preventive: { last: "14 Jun 2026", next: "14 Sep 2026" },
+  llf: { last: "02 May 2026", next: "02 Aug 2026" },
+  installed: "12 Aug 2018",
+};
+
+type PartEvent = {
+  date: string;
+  type: "replaced" | "failed" | "serviced";
+  note: string;
+  reason?: string;
+};
+type Part = {
+  id: string;
+  name: string;
+  serial: string;
+  installed: string;
+  health: "good" | "warning" | "critical";
+  events: PartEvent[];
+};
+
+const parts: Part[] = [
+  {
+    id: "blow",
+    name: "Blow Pin Assembly",
+    serial: "BP-2245-A",
+    installed: "12 Aug 2018",
+    health: "warning",
+    events: [
+      { date: "10 Jun 2026", type: "serviced", note: "Re-calibrated blow timing" },
+      {
+        date: "22 Feb 2026",
+        type: "failed",
+        note: "Pin seal blow-out",
+        reason:
+          "Worn O-ring caused air leakage during high-pressure cycle. Replaced seal kit and re-torqued housing bolts.",
+      },
+      { date: "04 Nov 2025", type: "replaced", note: "Nozzle tip — wear limit reached" },
+    ],
+  },
+  {
+    id: "motor",
+    name: "Main Drive Motor",
+    serial: "ABB-M3BP-200",
+    installed: "12 Aug 2018",
+    health: "good",
+    events: [
+      { date: "14 Jun 2026", type: "serviced", note: "Bearing grease top-up" },
+      {
+        date: "08 Jan 2026",
+        type: "failed",
+        note: "Overheat trip",
+        reason:
+          "Cooling fan obstructed by debris. Cleaned intake, replaced thermal sensor, restored airflow.",
+      },
+      { date: "19 Mar 2024", type: "replaced", note: "Drive-end bearing 6314-C3" },
+    ],
+  },
+  {
+    id: "hydraulic",
+    name: "Hydraulic Pump",
+    serial: "RX-HP-118",
+    installed: "05 Sep 2020",
+    health: "good",
+    events: [
+      { date: "02 May 2026", type: "serviced", note: "Oil filter change" },
+      {
+        date: "17 Aug 2025",
+        type: "failed",
+        note: "Pressure drop below 6 bar",
+        reason: "Internal seal degradation in pump head. Rebuilt pump cartridge, flushed lines.",
+      },
+    ],
+  },
+  {
+    id: "heater",
+    name: "Barrel Heater Bands",
+    serial: "HB-Z4-08",
+    installed: "11 Dec 2022",
+    health: "critical",
+    events: [
+      {
+        date: "20 Jun 2026",
+        type: "failed",
+        note: "Zone-3 heater open circuit",
+        reason: "Element burnout. Awaiting replacement band — running on bypass profile.",
+      },
+      { date: "11 Dec 2022", type: "replaced", note: "Full set replaced (4 zones)" },
+    ],
+  },
+];
+
+const breakdowns = [
+  {
+    date: "20 Jun 2026",
+    duration: "3h 20m",
+    issue: "Heater Zone-3 open circuit",
+    rootCause: "Element burnout (life expired)",
+    action: "Bypassed zone, scheduled replacement band ETA 28 Jun",
+  },
+  {
+    date: "22 Feb 2026",
+    duration: "5h 10m",
+    issue: "Blow pin seal failure",
+    rootCause: "Worn O-ring under high-pressure cycle",
+    action: "Replaced seal kit, re-torqued housing, updated PM interval to 90 days",
+  },
+  {
+    date: "08 Jan 2026",
+    duration: "2h 45m",
+    issue: "Motor overheat trip",
+    rootCause: "Obstructed cooling intake",
+    action: "Cleared debris, replaced thermal sensor, added monthly intake check",
+  },
+];
+
+/* ---------------- GRAPH DATA: Motor & Blower × DE / NDE ---------------- */
+
+type Reading = { t: string; v: number };
+type PartKey = "motor" | "blower";
+type SideKey = "DE" | "NDE";
+
+const vibration: Record<PartKey, Record<SideKey, Reading[]>> = {
+  motor: {
+    DE: [
+      { t: "08:00", v: 1.2 },
+      { t: "10:00", v: 1.6 },
+      { t: "12:00", v: 1.9 },
+      { t: "14:00", v: 2.1 },
+      { t: "16:00", v: 2.4 },
+      { t: "18:00", v: 2.1 },
+    ],
+    NDE: [
+      { t: "08:00", v: 1.4 },
+      { t: "10:00", v: 1.8 },
+      { t: "12:00", v: 2.3 },
+      { t: "14:00", v: 2.6 },
+      { t: "16:00", v: 2.9 },
+      { t: "18:00", v: 2.8 },
+    ],
+  },
+  blower: {
+    DE: [
+      { t: "08:00", v: 2.1 },
+      { t: "10:00", v: 3.2 },
+      { t: "12:00", v: 4.4 },
+      { t: "14:00", v: 5.1 },
+      { t: "16:00", v: 5.8 },
+      { t: "18:00", v: 5.9 },
+    ],
+    NDE: [
+      { t: "08:00", v: 2.6 },
+      { t: "10:00", v: 4.0 },
+      { t: "12:00", v: 5.4 },
+      { t: "14:00", v: 6.3 },
+      { t: "16:00", v: 6.9 },
+      { t: "18:00", v: 7.2 },
+    ],
+  },
 };
 
 const OK_MAX = 3;
@@ -76,6 +266,62 @@ function levelOf(v: number): "ok" | "warning" | "critical" {
   return "critical";
 }
 
+/* ---------------- REPORTS ---------------- */
+
+const reports = [
+  {
+    date: "22 May 2026",
+    technician: "Pending Assessment",
+    task: "Complete Overhaul & Part Replacement",
+    notes:
+      "Spare parts replaced: Shaft, Impeller, Bearings, Blower Pulley, Motor pulley, Belt, and Vibration isolators.",
+    rootCause: "Pending assessment update — kept editable for upcoming details.",
+    before: beforeImg,
+    after: afterImg,
+  },
+  {
+    date: "20 Sep 2015",
+    technician: "Historical Record",
+    task: "Blower & Motor Assembly Overhaul",
+    notes:
+      "Spare parts replaced: Blower Fan Pulley, Motor Pulley, Belt, and Blower Motor.",
+    rootCause: "Wear and tear over operational period",
+    before: beforeImg,
+    after: afterImg,
+  },
+  {
+    date: "29 Aug 2014",
+    technician: "Historical Record",
+    task: "Cooling & Air Handling Unit Overhaul",
+    notes:
+      "Spare parts replaced: 4x Cooling coil, 1x Rollamatic filter assembly, Air washer unit, 3x Doors, 7x Coil valves, Both Bearings, and Rotor assembly.",
+    rootCause: "Major scheduled maintenance cycle",
+    before: beforeImg,
+    after: afterImg,
+  },
+  {
+    date: "13 Jan 2012",
+    technician: "Historical Record",
+    task: "Impeller & Pulley Maintenance",
+    notes:
+      "Spare parts replaced/serviced: Impeller Balancing, Blower Pulley changed, Motor Pulley changed, Structure & casing painting.",
+    rootCause: "Scheduled preventive maintenance & wear",
+    before: beforeImg,
+    after: afterImg,
+  },
+  {
+    date: "20 Feb 2007",
+    technician: "Historical Record",
+    task: "Rotor & Drive Assembly Replacement",
+    notes:
+      "Spare parts replaced/serviced: Motor Pulley replaced, Blower pulley replaced, Shaft with rotor replaced, Both bearings replaced, Belt laser alignment done.",
+    rootCause: "Extensive wear causing drive instability",
+    before: beforeImg,
+    after: afterImg,
+  },
+];
+
+/* ============================================================ */
 
 function MachinePage() {
   return (
@@ -98,9 +344,6 @@ function MachinePage() {
 }
 
 function Header() {
-  const { machine } = useMachineData();
-  const label =
-    machine.status === "ok" ? "Operational" : machine.status === "warning" ? "Warning" : "Critical";
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
@@ -113,30 +356,17 @@ function Header() {
             <div className="text-[11px] text-muted-foreground truncate">Reliance Industries</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <StatusPill status={machine.status} label={label} />
-          <Link
-            to="/edit"
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent transition-colors"
-          >
-            <Pencil className="size-3.5" />
-            <span className="hidden sm:inline">Edit data</span>
-            <span className="sm:hidden">Edit</span>
-          </Link>
-        </div>
+        <StatusPill status="warning" label="Warning" />
       </div>
     </header>
   );
 }
 
-
 /* ===== SECTION 1 ===== */
 
 function SectionOverview() {
-  const { machine, specs, liveData, parts, breakdowns, maintenanceSummary } = useMachineData();
-  const [openPart, setOpenPart] = useState<string | null>(parts[0]?.id ?? null);
+  const [openPart, setOpenPart] = useState<string | null>("blow");
   const [openEvent, setOpenEvent] = useState<string | null>(null);
-
 
   return (
     <section id="overview" className="space-y-5 sm:space-y-6">
@@ -180,7 +410,7 @@ function SectionOverview() {
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {liveData.map((d) => (
-            <LiveStat key={d.label} {...d} icon={LIVE_ICONS[d.label] ?? Activity} />
+            <LiveStat key={d.label} {...d} />
           ))}
         </div>
       </div>
@@ -191,21 +421,18 @@ function SectionOverview() {
           Specifications
         </h4>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-          {specs.map((s) => {
-            const Icon = SPEC_ICONS[s.label] ?? Settings;
-            return (
-              <li
-                key={s.label}
-                className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
-              >
-                <span className="flex items-center gap-2 text-muted-foreground min-w-0">
-                  <Icon className="size-4 shrink-0" />
-                  <span className="truncate">{s.label}</span>
-                </span>
-                <span className="font-medium shrink-0">{s.value}</span>
-              </li>
-            );
-          })}
+          {specs.map((s) => (
+            <li
+              key={s.label}
+              className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
+            >
+              <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                <s.icon className="size-4 shrink-0" />
+                <span className="truncate">{s.label}</span>
+              </span>
+              <span className="font-medium shrink-0">{s.value}</span>
+            </li>
+          ))}
         </ul>
       </div>
 
@@ -237,9 +464,8 @@ function SectionOverview() {
                     </div>
                   </div>
                   <ChevronRight
-                    className={`size-4 text-muted-foreground transition-transform shrink-0 ${
-                      isOpen ? "rotate-90" : ""
-                    }`}
+                    className={`size-4 text-muted-foreground transition-transform shrink-0 ${isOpen ? "rotate-90" : ""
+                      }`}
                   />
                 </button>
                 {isOpen && (
@@ -251,9 +477,8 @@ function SectionOverview() {
                         <li key={key}>
                           <button
                             onClick={() => e.reason && setOpenEvent(expanded ? null : key)}
-                            className={`w-full text-left flex items-start gap-3 py-1.5 ${
-                              e.reason ? "cursor-pointer" : "cursor-default"
-                            }`}
+                            className={`w-full text-left flex items-start gap-3 py-1.5 ${e.reason ? "cursor-pointer" : "cursor-default"
+                              }`}
                           >
                             <EventBadge type={e.type} />
                             <div className="flex-1 min-w-0">
@@ -270,9 +495,8 @@ function SectionOverview() {
                             </div>
                             {e.reason && (
                               <ChevronRight
-                                className={`size-3.5 text-muted-foreground mt-1 transition-transform shrink-0 ${
-                                  expanded ? "rotate-90" : ""
-                                }`}
+                                className={`size-3.5 text-muted-foreground mt-1 transition-transform shrink-0 ${expanded ? "rotate-90" : ""
+                                  }`}
                               />
                             )}
                           </button>
@@ -354,13 +578,11 @@ function SectionOverview() {
 /* ===== SECTION 2 ===== */
 
 function SectionGraph() {
-  const { vibration } = useMachineData();
   const [part, setPart] = useState<PartKey>("blower");
   const [side, setSide] = useState<SideKey>("NDE");
   const data = vibration[part][side];
-  const current = data[data.length - 1]?.v ?? 0;
+  const current = data[data.length - 1].v;
   const status = levelOf(current);
-
 
   return (
     <section id="vibration" className="space-y-5 sm:space-y-6">
@@ -395,11 +617,10 @@ function SectionGraph() {
                 <button
                   key={k}
                   onClick={() => setPart(k)}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
-                    part === k
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-foreground border-border hover:bg-accent"
-                  }`}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${part === k
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-foreground border-border hover:bg-accent"
+                    }`}
                 >
                   {k === "motor" ? "Motor" : "Blower"}
                 </button>
@@ -417,11 +638,10 @@ function SectionGraph() {
               <button
                 key={s}
                 onClick={() => setSide(s)}
-                className={`px-3.5 py-1.5 rounded-md font-medium transition-colors ${
-                  side === s
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`px-3.5 py-1.5 rounded-md font-medium transition-colors ${side === s
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 {s === "DE" ? "Drive End" : "Non-Drive End"}
               </button>
@@ -554,8 +774,8 @@ function VibrationChart({ data }: { data: Reading[] }) {
             lvl === "ok"
               ? "var(--success)"
               : lvl === "warning"
-              ? "var(--warning)"
-              : "var(--critical)";
+                ? "var(--warning)"
+                : "var(--critical)";
           return (
             <circle
               key={i}
@@ -579,12 +799,8 @@ function VibrationChart({ data }: { data: Reading[] }) {
 /* ===== SECTION 3 ===== */
 
 function SectionReports() {
-  const { reports } = useMachineData();
   const [active, setActive] = useState(0);
-  const r = reports[Math.min(active, reports.length - 1)] ?? reports[0];
-
-  if (!r) return null;
-
+  const r = reports[active];
 
   return (
     <section id="reports" className="space-y-5 sm:space-y-6">
@@ -602,11 +818,10 @@ function SectionReports() {
               <button
                 key={rep.date + i}
                 onClick={() => setActive(i)}
-                className={`shrink-0 lg:shrink w-[240px] lg:w-full text-left px-4 py-3 rounded-xl border lg:border-0 snap-start transition-colors ${
-                  active === i
-                    ? "bg-primary/10 border-primary/30 lg:border-0"
-                    : "bg-card hover:bg-accent border-border"
-                }`}
+                className={`shrink-0 lg:shrink w-[240px] lg:w-full text-left px-4 py-3 rounded-xl border lg:border-0 snap-start transition-colors ${active === i
+                  ? "bg-primary/10 border-primary/30 lg:border-0"
+                  : "bg-card hover:bg-accent border-border"
+                  }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium truncate">{rep.task}</div>
@@ -730,8 +945,8 @@ function LiveStat({
     level === "ok"
       ? "border-success/30 bg-success/5"
       : level === "warning"
-      ? "border-warning/40 bg-warning/5"
-      : "border-critical/30 bg-critical/5";
+        ? "border-warning/40 bg-warning/5"
+        : "border-critical/30 bg-critical/5";
   const dot =
     level === "ok" ? "bg-success" : level === "warning" ? "bg-warning" : "bg-critical";
   return (
@@ -806,8 +1021,8 @@ function StatusPill({
     status === "ok"
       ? "bg-success/10 text-success border-success/20"
       : status === "warning"
-      ? "bg-warning/15 text-warning border-warning/30"
-      : "bg-critical/10 text-critical border-critical/20";
+        ? "bg-warning/15 text-warning border-warning/30"
+        : "bg-critical/10 text-critical border-critical/20";
   const dot =
     status === "ok" ? "bg-success" : status === "warning" ? "bg-warning" : "bg-critical";
   return (
@@ -835,9 +1050,8 @@ function StatusBar({
     level === "ok" ? "bg-success" : level === "warning" ? "bg-warning" : "bg-critical";
   return (
     <div
-      className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-medium border-r border-border last:border-r-0 ${
-        active ? "bg-muted" : ""
-      }`}
+      className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-medium border-r border-border last:border-r-0 ${active ? "bg-muted" : ""
+        }`}
     >
       <span className={`size-2.5 rounded-full ${color}`} />
       <span className={active ? "text-foreground" : "text-muted-foreground"}>
