@@ -579,8 +579,12 @@ function VibrationChart({ data }: { data: Reading[] }) {
 /* ===== SECTION 3 ===== */
 
 function SectionReports() {
+  const { reports } = useMachineData();
   const [active, setActive] = useState(0);
-  const r = reports[active];
+  const r = reports[Math.min(active, reports.length - 1)] ?? reports[0];
+
+  if (!r) return null;
+
 
   return (
     <section id="reports" className="space-y-5 sm:space-y-6">
