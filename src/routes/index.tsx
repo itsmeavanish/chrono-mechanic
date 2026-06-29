@@ -354,11 +354,13 @@ function SectionOverview() {
 /* ===== SECTION 2 ===== */
 
 function SectionGraph() {
+  const { vibration } = useMachineData();
   const [part, setPart] = useState<PartKey>("blower");
   const [side, setSide] = useState<SideKey>("NDE");
   const data = vibration[part][side];
-  const current = data[data.length - 1].v;
+  const current = data[data.length - 1]?.v ?? 0;
   const status = levelOf(current);
+
 
   return (
     <section id="vibration" className="space-y-5 sm:space-y-6">
