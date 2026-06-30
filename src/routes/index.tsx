@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Activity,
@@ -13,6 +13,7 @@ import {
   Gauge,
   Hash,
   MapPin,
+  Pencil,
   Settings,
   ShieldCheck,
   Thermometer,
@@ -22,9 +23,14 @@ import {
   Zap,
 } from "lucide-react";
 import machineImg from "@/assets/machine.jpeg";
-import beforeImg from "@/assets/before.jpg";
-import afterImg from "@/assets/after.jpg";
 import { ChatWidget } from "@/components/ChatWidget";
+import {
+  useMachineData,
+  type PartEvent,
+  type PartKey,
+  type Reading,
+  type SideKey,
+} from "@/lib/machine-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,214 +52,21 @@ export const Route = createFileRoute("/")({
   component: MachinePage,
 });
 
-/* ---------------- DATA ---------------- */
+/* ---------------- ICON MAPS ---------------- */
 
-const machine = {
-  name: "AHU-Quench SH1",
-  type: "Air Handling Unit — Quench",
-  assetId: "AHU-QUENCH-SH1",
-  model: "Krupp Kautex KBB-50",
-  location: "PSF CP4 Plant · Bay 3",
-  function: "Supply air system — supplies clean & conditioned quench air",
-  installed: "12 Aug 2018",
-  status: "operational" as "operational" | "warning" | "critical",
+const SPEC_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  "Rated Power": Zap,
+  "Clamp Force": Gauge,
+  "Shot Weight": Hash,
+  "Cycle Time": Activity,
+  "Operating Temp": Cog,
+  "Air Pressure": Settings,
 };
 
-const specs = [
-  { label: "Rated Power", value: "75 kW", icon: Zap },
-  { label: "Clamp Force", value: "500 kN", icon: Gauge },
-  { label: "Shot Weight", value: "1,200 g", icon: Hash },
-  { label: "Cycle Time", value: "18 s", icon: Activity },
-  { label: "Operating Temp", value: "180–230 °C", icon: Cog },
-  { label: "Air Pressure", value: "8–10 bar", icon: Settings },
-];
-
-const liveData = [
-  {
-    label: "Vibration",
-    value: "5.9",
-    unit: "mm/s",
-    detail: "Blower DE · trend ↑",
-    level: "warning" as const,
-    icon: Waves,
-  },
-  {
-    label: "Bearing Temp",
-    value: "62",
-    unit: "°C",
-    detail: "Within range",
-    level: "ok" as const,
-    icon: Thermometer,
-  },
-  {
-    label: "Filter ΔP",
-    value: "1.4",
-    unit: "bar",
-    detail: "Replace > 1.8",
-    level: "ok" as const,
-    icon: Droplets,
-  },
-];
-
-const maintenanceSummary = {
-  preventive: { last: "14 Jun 2026", next: "14 Sep 2026" },
-  llf: { last: "02 May 2026", next: "02 Aug 2026" },
-  installed: "12 Aug 2018",
-};
-
-type PartEvent = {
-  date: string;
-  type: "replaced" | "failed" | "serviced";
-  note: string;
-  reason?: string;
-};
-type Part = {
-  id: string;
-  name: string;
-  serial: string;
-  installed: string;
-  health: "good" | "warning" | "critical";
-  events: PartEvent[];
-};
-
-const parts: Part[] = [
-  {
-    id: "blow",
-    name: "Blow Pin Assembly",
-    serial: "BP-2245-A",
-    installed: "12 Aug 2018",
-    health: "warning",
-    events: [
-      { date: "10 Jun 2026", type: "serviced", note: "Re-calibrated blow timing" },
-      {
-        date: "22 Feb 2026",
-        type: "failed",
-        note: "Pin seal blow-out",
-        reason:
-          "Worn O-ring caused air leakage during high-pressure cycle. Replaced seal kit and re-torqued housing bolts.",
-      },
-      { date: "04 Nov 2025", type: "replaced", note: "Nozzle tip — wear limit reached" },
-    ],
-  },
-  {
-    id: "motor",
-    name: "Main Drive Motor",
-    serial: "ABB-M3BP-200",
-    installed: "12 Aug 2018",
-    health: "good",
-    events: [
-      { date: "14 Jun 2026", type: "serviced", note: "Bearing grease top-up" },
-      {
-        date: "08 Jan 2026",
-        type: "failed",
-        note: "Overheat trip",
-        reason:
-          "Cooling fan obstructed by debris. Cleaned intake, replaced thermal sensor, restored airflow.",
-      },
-      { date: "19 Mar 2024", type: "replaced", note: "Drive-end bearing 6314-C3" },
-    ],
-  },
-  {
-    id: "hydraulic",
-    name: "Hydraulic Pump",
-    serial: "RX-HP-118",
-    installed: "05 Sep 2020",
-    health: "good",
-    events: [
-      { date: "02 May 2026", type: "serviced", note: "Oil filter change" },
-      {
-        date: "17 Aug 2025",
-        type: "failed",
-        note: "Pressure drop below 6 bar",
-        reason: "Internal seal degradation in pump head. Rebuilt pump cartridge, flushed lines.",
-      },
-    ],
-  },
-  {
-    id: "heater",
-    name: "Barrel Heater Bands",
-    serial: "HB-Z4-08",
-    installed: "11 Dec 2022",
-    health: "critical",
-    events: [
-      {
-        date: "20 Jun 2026",
-        type: "failed",
-        note: "Zone-3 heater open circuit",
-        reason: "Element burnout. Awaiting replacement band — running on bypass profile.",
-      },
-      { date: "11 Dec 2022", type: "replaced", note: "Full set replaced (4 zones)" },
-    ],
-  },
-];
-
-const breakdowns = [
-  {
-    date: "20 Jun 2026",
-    duration: "3h 20m",
-    issue: "Heater Zone-3 open circuit",
-    rootCause: "Element burnout (life expired)",
-    action: "Bypassed zone, scheduled replacement band ETA 28 Jun",
-  },
-  {
-    date: "22 Feb 2026",
-    duration: "5h 10m",
-    issue: "Blow pin seal failure",
-    rootCause: "Worn O-ring under high-pressure cycle",
-    action: "Replaced seal kit, re-torqued housing, updated PM interval to 90 days",
-  },
-  {
-    date: "08 Jan 2026",
-    duration: "2h 45m",
-    issue: "Motor overheat trip",
-    rootCause: "Obstructed cooling intake",
-    action: "Cleared debris, replaced thermal sensor, added monthly intake check",
-  },
-];
-
-/* ---------------- GRAPH DATA: Motor & Blower × DE / NDE ---------------- */
-
-type Reading = { t: string; v: number };
-type PartKey = "motor" | "blower";
-type SideKey = "DE" | "NDE";
-
-const vibration: Record<PartKey, Record<SideKey, Reading[]>> = {
-  motor: {
-    DE: [
-      { t: "08:00", v: 1.2 },
-      { t: "10:00", v: 1.6 },
-      { t: "12:00", v: 1.9 },
-      { t: "14:00", v: 2.1 },
-      { t: "16:00", v: 2.4 },
-      { t: "18:00", v: 2.1 },
-    ],
-    NDE: [
-      { t: "08:00", v: 1.4 },
-      { t: "10:00", v: 1.8 },
-      { t: "12:00", v: 2.3 },
-      { t: "14:00", v: 2.6 },
-      { t: "16:00", v: 2.9 },
-      { t: "18:00", v: 2.8 },
-    ],
-  },
-  blower: {
-    DE: [
-      { t: "08:00", v: 2.1 },
-      { t: "10:00", v: 3.2 },
-      { t: "12:00", v: 4.4 },
-      { t: "14:00", v: 5.1 },
-      { t: "16:00", v: 5.8 },
-      { t: "18:00", v: 5.9 },
-    ],
-    NDE: [
-      { t: "08:00", v: 2.6 },
-      { t: "10:00", v: 4.0 },
-      { t: "12:00", v: 5.4 },
-      { t: "14:00", v: 6.3 },
-      { t: "16:00", v: 6.9 },
-      { t: "18:00", v: 7.2 },
-    ],
-  },
+const LIVE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Vibration: Waves,
+  "Bearing Temp": Thermometer,
+  "Filter ΔP": Droplets,
 };
 
 const OK_MAX = 3;
@@ -266,67 +79,13 @@ function levelOf(v: number): "ok" | "warning" | "critical" {
   return "critical";
 }
 
-/* ---------------- REPORTS ---------------- */
-
-const reports = [
-  {
-    date: "22 May 2026",
-    technician: "Pending Assessment",
-    task: "Complete Overhaul & Part Replacement",
-    notes:
-      "Spare parts replaced: Shaft, Impeller, Bearings, Blower Pulley, Motor pulley, Belt, and Vibration isolators.",
-    rootCause: "Pending assessment update — kept editable for upcoming details.",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "20 Sep 2015",
-    technician: "Historical Record",
-    task: "Blower & Motor Assembly Overhaul",
-    notes:
-      "Spare parts replaced: Blower Fan Pulley, Motor Pulley, Belt, and Blower Motor.",
-    rootCause: "Wear and tear over operational period",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "29 Aug 2014",
-    technician: "Historical Record",
-    task: "Cooling & Air Handling Unit Overhaul",
-    notes:
-      "Spare parts replaced: 4x Cooling coil, 1x Rollamatic filter assembly, Air washer unit, 3x Doors, 7x Coil valves, Both Bearings, and Rotor assembly.",
-    rootCause: "Major scheduled maintenance cycle",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "13 Jan 2012",
-    technician: "Historical Record",
-    task: "Impeller & Pulley Maintenance",
-    notes:
-      "Spare parts replaced/serviced: Impeller Balancing, Blower Pulley changed, Motor Pulley changed, Structure & casing painting.",
-    rootCause: "Scheduled preventive maintenance & wear",
-    before: beforeImg,
-    after: afterImg,
-  },
-  {
-    date: "20 Feb 2007",
-    technician: "Historical Record",
-    task: "Rotor & Drive Assembly Replacement",
-    notes:
-      "Spare parts replaced/serviced: Motor Pulley replaced, Blower pulley replaced, Shaft with rotor replaced, Both bearings replaced, Belt laser alignment done.",
-    rootCause: "Extensive wear causing drive instability",
-    before: beforeImg,
-    after: afterImg,
-  },
-];
-
 /* ============================================================ */
 
 function MachinePage() {
+  const data = useMachineData();
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
-      <Header />
+      <Header status={data.machine.status} />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-10 sm:space-y-16">
         <SectionOverview />
         <SectionGraph />
@@ -343,7 +102,8 @@ function MachinePage() {
   );
 }
 
-function Header() {
+function Header({ status }: { status: "ok" | "warning" | "critical" }) {
+  const label = status === "ok" ? "Operational" : status === "warning" ? "Warning" : "Critical";
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
@@ -356,7 +116,16 @@ function Header() {
             <div className="text-[11px] text-muted-foreground truncate">Reliance Industries</div>
           </div>
         </div>
-        <StatusPill status="warning" label="Warning" />
+        <div className="flex items-center gap-2">
+          <StatusPill status={status} label={label} />
+          <Link
+            to="/edit"
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-border bg-background hover:bg-accent"
+          >
+            <Pencil className="size-3.5" />
+            <span className="hidden sm:inline">Edit</span>
+          </Link>
+        </div>
       </div>
     </header>
   );
@@ -365,7 +134,8 @@ function Header() {
 /* ===== SECTION 1 ===== */
 
 function SectionOverview() {
-  const [openPart, setOpenPart] = useState<string | null>("blow");
+  const { machine, specs, liveData, parts, breakdowns, maintenanceSummary } = useMachineData();
+  const [openPart, setOpenPart] = useState<string | null>(parts[0]?.id ?? null);
   const [openEvent, setOpenEvent] = useState<string | null>(null);
 
   return (
@@ -410,7 +180,15 @@ function SectionOverview() {
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {liveData.map((d) => (
-            <LiveStat key={d.label} {...d} />
+            <LiveStat
+              key={d.label}
+              icon={LIVE_ICONS[d.label] ?? Activity}
+              label={d.label}
+              value={d.value}
+              unit={d.unit}
+              detail={d.detail}
+              level={d.level}
+            />
           ))}
         </div>
       </div>
@@ -421,18 +199,21 @@ function SectionOverview() {
           Specifications
         </h4>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-          {specs.map((s) => (
-            <li
-              key={s.label}
-              className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
-            >
-              <span className="flex items-center gap-2 text-muted-foreground min-w-0">
-                <s.icon className="size-4 shrink-0" />
-                <span className="truncate">{s.label}</span>
-              </span>
-              <span className="font-medium shrink-0">{s.value}</span>
-            </li>
-          ))}
+          {specs.map((s) => {
+            const Icon = SPEC_ICONS[s.label] ?? Settings;
+            return (
+              <li
+                key={s.label}
+                className="flex items-center justify-between text-sm gap-3 border-b border-border/60 last:border-0 sm:border-0 py-1.5"
+              >
+                <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{s.label}</span>
+                </span>
+                <span className="font-medium shrink-0">{s.value}</span>
+              </li>
+            );
+          })}
         </ul>
       </div>
 
@@ -517,8 +298,8 @@ function SectionOverview() {
           <h4 className="font-semibold mb-4">Breakdown History</h4>
           {breakdowns.length > 0 ? (
             <ol className="relative border-l border-border ml-1.5 space-y-5">
-              {breakdowns.map((b) => (
-                <li key={b.date} className="pl-5">
+              {breakdowns.map((b, i) => (
+                <li key={`${b.date}-${i}`} className="pl-5">
                   <span className="absolute -left-1.5 mt-1.5 size-3 rounded-full bg-primary ring-4 ring-background" />
                   <div className="text-sm font-medium">{b.issue}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
@@ -578,10 +359,11 @@ function SectionOverview() {
 /* ===== SECTION 2 ===== */
 
 function SectionGraph() {
+  const { vibration } = useMachineData();
   const [part, setPart] = useState<PartKey>("blower");
   const [side, setSide] = useState<SideKey>("NDE");
   const data = vibration[part][side];
-  const current = data[data.length - 1].v;
+  const current = data.length ? data[data.length - 1].v : 0;
   const status = levelOf(current);
 
   return (
@@ -664,6 +446,14 @@ function VibrationChart({ data }: { data: Reading[] }) {
   const PAD_B = 36;
   const innerW = W - PAD_L - PAD_R;
   const innerH = H - PAD_T - PAD_B;
+
+  if (data.length === 0) {
+    return (
+      <div className="h-[260px] sm:h-[300px] grid place-items-center text-sm text-muted-foreground">
+        No vibration readings yet.
+      </div>
+    );
+  }
 
   const xOf = (i: number) =>
     PAD_L + (data.length === 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
@@ -754,7 +544,7 @@ function VibrationChart({ data }: { data: Reading[] }) {
         />
         {data.map((d, i) => (
           <text
-            key={d.t}
+            key={`${d.t}-${i}`}
             x={xOf(i)}
             y={H - 12}
             textAnchor="middle"
@@ -799,8 +589,10 @@ function VibrationChart({ data }: { data: Reading[] }) {
 /* ===== SECTION 3 ===== */
 
 function SectionReports() {
+  const { reports } = useMachineData();
   const [active, setActive] = useState(0);
-  const r = reports[active];
+  const safeActive = Math.min(active, Math.max(reports.length - 1, 0));
+  const r = reports[safeActive];
 
   return (
     <section id="reports" className="space-y-5 sm:space-y-6">
@@ -810,76 +602,82 @@ function SectionReports() {
         subtitle="Major component replacements, visual evidence, and root causes."
       />
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-5 sm:gap-6">
-        {/* Mobile: horizontal scroller. Desktop: vertical list */}
-        <div className="min-w-0 lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-2 lg:shadow-sm">
-          <div className="flex lg:flex-col gap-2 lg:gap-1 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0 pb-1 lg:pb-0 snap-x snap-mandatory">
-            {reports.map((rep, i) => (
-              <button
-                key={rep.date + i}
-                onClick={() => setActive(i)}
-                className={`shrink-0 lg:shrink w-[240px] lg:w-full text-left px-4 py-3 rounded-xl border lg:border-0 snap-start transition-colors ${active === i
-                  ? "bg-primary/10 border-primary/30 lg:border-0"
-                  : "bg-card hover:bg-accent border-border"
-                  }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium truncate">{rep.task}</div>
-                  {active === i && (
-                    <span className="size-2 rounded-full bg-primary shrink-0" />
-                  )}
+      {!r ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
+          No maintenance reports yet. Add one from the Edit page.
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-[320px_1fr] gap-5 sm:gap-6">
+          {/* Mobile: horizontal scroller. Desktop: vertical list */}
+          <div className="min-w-0 lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:p-2 lg:shadow-sm">
+            <div className="flex lg:flex-col gap-2 lg:gap-1 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0 pb-1 lg:pb-0 snap-x snap-mandatory">
+              {reports.map((rep, i) => (
+                <button
+                  key={rep.date + i}
+                  onClick={() => setActive(i)}
+                  className={`shrink-0 lg:shrink w-[240px] lg:w-full text-left px-4 py-3 rounded-xl border lg:border-0 snap-start transition-colors ${safeActive === i
+                    ? "bg-primary/10 border-primary/30 lg:border-0"
+                    : "bg-card hover:bg-accent border-border"
+                    }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium truncate">{rep.task}</div>
+                    {safeActive === i && (
+                      <span className="size-2 rounded-full bg-primary shrink-0" />
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 truncate">
+                    <Calendar className="size-3 shrink-0" />
+                    {rep.date}
+                    <span>·</span>
+                    <User className="size-3 shrink-0" />
+                    <span className="truncate">{rep.technician}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-lg sm:text-xl font-semibold">{r.task}</h3>
+                <div className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="size-3.5" /> {r.date}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <User className="size-3.5" /> {r.technician}
+                  </span>
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5 truncate">
-                  <Calendar className="size-3 shrink-0" />
-                  {rep.date}
-                  <span>·</span>
-                  <User className="size-3 shrink-0" />
-                  <span className="truncate">{rep.technician}</span>
+              </div>
+              <span className="text-[11px] sm:text-xs px-2.5 py-1 rounded-full bg-success/15 text-success font-medium border border-success/20">
+                Completed
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <PhotoCard label="Before" src={r.before} />
+              <PhotoCard label="After" src={r.after} />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="rounded-xl bg-muted p-4">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="size-3.5" /> Technician notes
                 </div>
-              </button>
-            ))}
+                <p className="text-sm mt-2 leading-relaxed">{r.notes}</p>
+              </div>
+              <div className="rounded-xl bg-muted p-4">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <AlertTriangle className="size-3.5" /> Root cause
+                </div>
+                <p className="text-sm mt-2 leading-relaxed">{r.rootCause}</p>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-lg sm:text-xl font-semibold">{r.task}</h3>
-              <div className="text-xs sm:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="size-3.5" /> {r.date}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <User className="size-3.5" /> {r.technician}
-                </span>
-              </div>
-            </div>
-            <span className="text-[11px] sm:text-xs px-2.5 py-1 rounded-full bg-success/15 text-success font-medium border border-success/20">
-              Completed
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <PhotoCard label="Before" src={r.before} />
-            <PhotoCard label="After" src={r.after} />
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="rounded-xl bg-muted p-4">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <FileText className="size-3.5" /> Technician notes
-              </div>
-              <p className="text-sm mt-2 leading-relaxed">{r.notes}</p>
-            </div>
-            <div className="rounded-xl bg-muted p-4">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <AlertTriangle className="size-3.5" /> Root cause
-              </div>
-              <p className="text-sm mt-2 leading-relaxed">{r.rootCause}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </section>
   );
 }
